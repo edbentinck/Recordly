@@ -1913,7 +1913,7 @@ function parseWhisperJsonWords(tokens: unknown) {
       }
 
       if (tokenStartMs == null || tokenEndMs == null || tokenEndMs <= tokenStartMs) {
-        return []
+        continue
       }
 
       const previousWord = words.length > 0 ? words[words.length - 1] : null
@@ -2209,9 +2209,15 @@ async function generateAutoCaptionsFromVideo(options: {
     const timedCues = jsonEnabled
       ? parseWhisperJsonCues(await fs.readFile(jsonPath, 'utf-8'))
       : []
-    const cues = timedCues.length > 0
-      ? timedCues
-      : parseSrtCues(await fs.readFile(srtPath, 'utf-8'))
+    let srtCues: CaptionCuePayload[] = []
+    if (timedCues.length === 0) {
+      try {
+        srtCues = parseSrtCues(await fs.readFile(srtPath, 'utf-8'))
+      } catch {
+        // SRT file may not exist when whisper was run with JSON-only output
+      }
+    }
+    const cues = timedCues.length > 0 ? timedCues : srtCues
     if (cues.length === 0) {
       throw new Error('Whisper completed, but no caption cues were produced.')
     }
